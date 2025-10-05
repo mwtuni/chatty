@@ -1,0 +1,18 @@
+# RTX 5080 optimized requirements - CUDA 12.8 compatible
+# Install PyTorch first with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# Core packages for kokoro_optimized.py pipeline
+# TTS (Text-to-Speech) with Kokoro engine support
+realtimetts[kokoro]==0.5.7
+
+# STT (Speech-to-Text) 
+realtimestt==0.3.104
+
+# LLM API client
+openai==2.1.0
+
+# Audio playback
+pygame==2.6.1
+
+# Note: Also requires system packages:
+# sudo apt install portaudio19-dev python3-pyaudio

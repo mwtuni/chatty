@@ -1,0 +1,7 @@
+.rag_cache
+secrets
+.venv
+__pycache__
+models
+obsolete
+

@@ -1,0 +1,26 @@
+{
+    "llm": {
+        "backend": "ollama",
+        "system_prompt": [
+            "You are Charlotte, a helpful and knowledgeable AI assistant.",
+            "",
+            "Response rules:",
+            "- Respond only in natural spoken dialogue, as if you were talking to the user.",
+            "- NEVER include role labels like 'Assistant:' or 'User:' or any other prefixes.",
+            "- Be clear, friendly, and confident.",
+            "- Keep answers concise (2–3 sentences)."
+        ],
+        "backends": {
+            "ollama": {
+                "opts": {
+                    "model": "mistral-nemo:12b"
+                }
+            },
+            "openai": {
+                "opts": {
+                    "model": "gpt-4o-mini"
+                }
+            }
+        }
+    }
+}
