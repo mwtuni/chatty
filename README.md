@@ -11,6 +11,9 @@ Highlights
 - realtime TTS via `RealtimeTTS` Kokoro engine (configured in `pipeline.py`)
 - lightweight metrics: per-turn QUESTION-TO-RESPONSE_MS and LLM timing (TTF / total)
 
+  <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/40e457b0-05ca-4abf-879e-e1ccbf6dd6a5" />
+
+
 Quick start
 -----------
 Prerequisites
