@@ -1,17 +1,5 @@
-Chatty — low-latency voice assistant pipeline
-=============================================
 
-Small, minimal voice chat pipeline that glues realtime STT -> LLM -> streaming TTS together.
-This repository wires a local or cloud LLM (Ollama / OpenAI adapters) to a streaming TTS engine (RealtimeTTS / Kokoro) and a lightweight audio player so you can have conversational voice interactions with low latency.
-
-Highlights
-- simple single-file pipeline orchestration: `pipeline.py`
-- pluggable LLM adapters: `llm_ollama_adapter.py`, `llm_openai_adapter.py`
-- shared adapter helpers in `llm_interface.py`
-- realtime TTS via `RealtimeTTS` Kokoro engine (configured in `pipeline.py`)
-- lightweight metrics: per-turn QUESTION-TO-RESPONSE_MS and LLM timing (TTF / total)
-
-  <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/40e457b0-05ca-4abf-879e-e1ccbf6dd6a5" />
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/40e457b0-05ca-4abf-879e-e1ccbf6dd6a5" />
 
 
 Quick start
