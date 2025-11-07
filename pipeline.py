@@ -3,6 +3,21 @@ import os, time, threading, logger, json
 from queue import Queue
 from mic_in_interrupt import stream_with_barge_in
 
+# Force offline mode for all HuggingFace operations to prevent network access
+# in corporate environments. This must be set before importing any HF libraries.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1") 
+os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+
+# Also disable automatic downloads and force local cache usage only
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
+try:
+    logger.info("🔒 HuggingFace offline mode enabled (HF_HUB_OFFLINE=1)", module="main")
+except:
+    print("🔒 HuggingFace offline mode enabled")
+
 # Resolve LLM backend with the following precedence:
 # 1) config.json llm.backend (if present)
 # 2) LLM_BACKEND environment variable
@@ -43,15 +58,35 @@ class OptimizedKokoroTTS:
         self.first_word_time = None
         self.cancel_event = threading.Event()  # <- used by Synthesizer to abort work
 
+        # Import RealtimeTTS after setting offline environment variables
         from RealtimeTTS import TextToAudioStream, KokoroEngine
-        self.engine = KokoroEngine(
-            voice="af_bella",
-            default_speed=1.0,
-            trim_silence=True,
-            silence_threshold=0.005,
-            extra_start_ms=5, extra_end_ms=5,
-            fade_in_ms=2,  fade_out_ms=2,
-        )
+        
+        # Try to initialize Kokoro with offline-friendly settings
+        try:
+            # Check if we have a local HF cache directory with Kokoro models
+            hf_cache = os.path.expanduser("~/.cache/huggingface")
+            kokoro_path = os.path.join(hf_cache, "hub", "models--hexgrad--Kokoro-82M")
+            
+            if os.path.exists(kokoro_path):
+                _L("🏠 Using local Kokoro cache", kokoro_path)
+                # Initialize with local cache reference (this should prevent online lookups)
+                self.engine = KokoroEngine(
+                    voice="af_bella",
+                    default_speed=1.0,
+                    trim_silence=True,
+                    silence_threshold=0.005,
+                    extra_start_ms=5, extra_end_ms=5,
+                    fade_in_ms=2,  fade_out_ms=2,
+                )
+            else:
+                _L("⚠️ Local Kokoro cache not found", f"Expected at: {kokoro_path}")
+                raise FileNotFoundError("Kokoro models not found in local cache")
+                
+        except Exception as e:
+            _L("❌ Failed to initialize Kokoro TTS", str(e))
+            _L("💡 Suggestion", "Run 'package_models.bat extract' to install offline models")
+            raise RuntimeError(f"TTS initialization failed: {e}")
+            
         self.stream = TextToAudioStream(self.engine, muted=True, playout_chunk_size=256, output_device_index=None)
         # metrics
         self.question_end_time = None
