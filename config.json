@@ -13,7 +13,7 @@
         "backends": {
             "ollama": {
                 "opts": {
-                    "model": "mistral-nemo:12b"
+                    "model": "gemma2:2b"
                 }
             },
             "openai": {

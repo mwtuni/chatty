@@ -23,7 +23,7 @@ class OllamaLLM:
 
     def __init__(
         self,
-        model: str = "type32/lemonade-rp:latest",
+        model: str = "gemma2:2b",
         base_url: str | None = None,
         system_prompt: str = "You are a helpful assistant. Be concise and conversational.",
         keep_alive: str = "30m",
