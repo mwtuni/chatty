@@ -2,6 +2,7 @@
 import os, time, threading, logger, json
 from queue import Queue
 from mic_in_interrupt import stream_with_barge_in
+from avatar_mcp_client import AvatarMCPClient
 
 # Resolve LLM backend with the following precedence:
 # 1) config.json llm.backend (if present)
@@ -224,8 +225,25 @@ def main():
         if api_key_env:
             backend_opts['api_key'] = os.getenv(api_key_env)
 
+        avatar_cfg = cfg.get("avatar", {}) if "cfg" in globals() else {}
+        avatar_client = AvatarMCPClient(
+            logger=lambda msg: logger.info(msg, module="avatar"),
+            config=avatar_cfg if isinstance(avatar_cfg, dict) else {},
+        )
+        avatar_prompt = None
+        if avatar_client.avatar_id:
+            ctx = avatar_client.fetch_context(private=True)
+            avatar_prompt = AvatarMCPClient.build_prompt(ctx)
+            if ctx is None:
+                logger.warn("⚠️ Failed to load avatar context", module="avatar")
+        if avatar_prompt:
+            combined_prompt = avatar_prompt
+            logger.info("Using avatar persona prompt for Chatty.", module="avatar")
+        else:
+            combined_prompt = system_prompt or ""
+
         # instantiate adapter with opts and explicit system_prompt (adapters accept and prefer it)
-        llm = LLMBackend(system_prompt=system_prompt, **backend_opts)
+        llm = LLMBackend(system_prompt=combined_prompt, **backend_opts)
         tts = OptimizedKokoroTTS(); tts.start()
 
         from stt_process import KokoroSTT
@@ -261,6 +279,8 @@ def main():
                 logger.warn("❌ Failed to get question, retrying...", module="main"); continue
 
             logger.info(f"🤖 Question: '{received}'", module="main")
+            if avatar_client.avatar_id and "remember" in received.lower():
+                avatar_client.store_memory(received, private=True)
 
             # reset per-turn metrics to avoid stale values
             try:

@@ -14,5 +14,8 @@ openai==2.1.0
 # Audio playback
 pygame==2.6.1
 
+# HTTP client for Avatar MCP integration
+httpx==0.28.1
+
 # Note: Also requires system packages:
 # sudo apt install portaudio19-dev python3-pyaudio

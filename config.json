@@ -22,5 +22,10 @@
                 }
             }
         }
+    },
+    "avatar": {
+        "avatar_id": "08a2fb96",
+        "admin_id": "01043e7a9c7141f892d0b08e6c325f18",
+        "base_url": "http://localhost:7865"
     }
 }
