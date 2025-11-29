@@ -4,4 +4,6 @@ secrets
 __pycache__
 models
 obsolete
+venv
+devpacks
 
