@@ -14,8 +14,30 @@ class AvatarMCPClient:
         config: Optional[Dict[str, Any]] = None,
     ):
         cfg = config or {}
-        base = base_url or cfg.get("base_url") or os.getenv("AVATAR_MCP_BASE")
-        self.base_url = (base or "http://localhost:7860").rstrip("/")
+        # Resolve backend preference (default to Hugging Face Space)
+        backend_pref = (
+            (cfg.get("backend") or os.getenv("AVATAR_BACKEND") or "huggingface")
+            .strip()
+            .lower()
+        )
+        hf_base_cfg = cfg.get("hf_base_url") or os.getenv("AVATAR_MCP_HF_BASE")
+        local_base_cfg = cfg.get("local_base_url") or os.getenv("AVATAR_MCP_LOCAL_BASE")
+        # Explicit overrides take precedence
+        base = (
+            base_url
+            or cfg.get("base_url")
+            or os.getenv("AVATAR_MCP_BASE")
+            or os.getenv("AVATAR_MCP_BASE_URL")
+        )
+        default_hf = "https://mwtuni-avatar-mcp.hf.space"
+        default_local = "http://localhost:7865"
+        if base:
+            resolved_base = base
+        elif backend_pref in ("local", "dev", "localhost"):
+            resolved_base = local_base_cfg or default_local
+        else:
+            resolved_base = hf_base_cfg or default_hf
+        self.base_url = resolved_base.rstrip("/")
         self.avatar_id = avatar_id or cfg.get("avatar_id") or os.getenv("AVATAR_ID")
         self.admin_id = admin_id or cfg.get("admin_id") or os.getenv("AVATAR_ADMIN_ID")
         self.logger = logger
@@ -32,7 +54,9 @@ class AvatarMCPClient:
     def _request(self, path: str, payload: Dict[str, Any]):
         url = f"{self.base_url}{path}"
         try:
-            resp = httpx.post(url, json=payload, timeout=10)
+            resp = httpx.post(
+                url, json=payload, timeout=20, follow_redirects=True
+            )
             resp.raise_for_status()
             return resp.json()
         except Exception as exc:
