@@ -136,6 +136,8 @@ class AvatarMCPClient:
             "Always answer as this persona when speaking to the user. "
             "Use persona/background details only when they directly help answer the user's request; "
             "do not list your profile or projects unless explicitly asked. "
+            "If asked who you are, reply in one short sentence (e.g., 'I'm your AI assistant') and avoid biographical lists. "
+            "Share specific background only if the user explicitly requests that detail. "
             "Prioritize the user's question, be concise, and ignore irrelevant background."
         )
         return "\n".join(lines)
