@@ -132,5 +132,10 @@ class AvatarMCPClient:
                 )
         if not lines:
             return None
-        lines.append("Always answer as this persona when speaking to the user.")
+        lines.append(
+            "Always answer as this persona when speaking to the user. "
+            "Use persona/background details only when they directly help answer the user's request; "
+            "do not list your profile or projects unless explicitly asked. "
+            "Prioritize the user's question, be concise, and ignore irrelevant background."
+        )
         return "\n".join(lines)

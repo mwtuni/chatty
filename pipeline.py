@@ -230,24 +230,51 @@ def main():
             logger=lambda msg: logger.info(msg, module="avatar"),
             config=avatar_cfg if isinstance(avatar_cfg, dict) else {},
         )
-        avatar_summary = None
+        avatar_prompt = None
         if avatar_client.avatar_id:
-            avatar_summary = avatar_client.summarize(max_mem=3)
-            if not avatar_summary:
+            avatar_prompt = avatar_client.summarize(max_mem=3)
+            if not avatar_prompt:
                 ctx = avatar_client.fetch_context(private=True)
-                avatar_summary = AvatarMCPClient.build_prompt(ctx)
-            if avatar_summary:
-                logger.info("Using avatar summary/persona prompt.", module="avatar")
+                avatar_prompt = AvatarMCPClient.build_prompt(ctx)
+            if avatar_prompt:
+                logger.info("Avatar persona prompt loaded.", module="avatar")
             else:
                 logger.warn("⚠️ Failed to load avatar context", module="avatar")
-        combined_prompt = avatar_summary or system_prompt or ""
+        # Resolve system prompt preference: avatar prompt (if loaded) > avatar config prompt > llm config prompt
+        avatar_cfg_prompt = None
+        try:
+            avatar_cfg_prompt = avatar_cfg.get("system_prompt")
+            if isinstance(avatar_cfg_prompt, list):
+                avatar_cfg_prompt = "\n".join([str(x) for x in avatar_cfg_prompt if x is not None])
+        except Exception:
+            avatar_cfg_prompt = None
+        llm_system_prompt = avatar_prompt or avatar_cfg_prompt or system_prompt or ""
 
         # instantiate adapter with opts and explicit system_prompt (adapters accept and prefer it)
-        llm = LLMBackend(system_prompt=combined_prompt, **backend_opts)
+        llm = LLMBackend(system_prompt=llm_system_prompt, **backend_opts)
         tts = OptimizedKokoroTTS(); tts.start()
 
         from stt_process import KokoroSTT
         realtime_stt = KokoroSTT()
+
+        def _is_persona_query(text: str) -> bool:
+            """Only inject avatar snippets when the user asks about the persona/background."""
+            if not text:
+                return False
+            lowered = text.lower()
+            triggers = (
+                "you",
+                "your",
+                "mika",
+                "avatar",
+                "profile",
+                "bio",
+                "background",
+                "project",
+                "portfolio",
+                "remember",
+            )
+            return any(tok in lowered for tok in triggers)
 
         def _ready(stt_obj, timeout=12.0):
             try:
@@ -279,11 +306,12 @@ def main():
                 logger.warn("❌ Failed to get question, retrying...", module="main"); continue
 
             logger.info(f"🤖 Question: '{received}'", module="main")
+            persona_query = _is_persona_query(received)
             if avatar_client.avatar_id and "remember" in received.lower():
                 avatar_client.store_memory(received, private=True)
             # Lightweight context refresh per turn: pull top snippets for this utterance
             snippets = None
-            if avatar_client.avatar_id:
+            if avatar_client.avatar_id and persona_query:
                 try:
                     snippets = avatar_client.retrieve_snippets(received, limit=3)
                 except Exception:
@@ -308,7 +336,7 @@ def main():
 
             # Build per-turn prompt with snippets appended (if any)
             turn_question = received
-            if snippets:
+            if persona_query and snippets:
                 snippet_text = "Relevant notes: " + " | ".join(snippets)
                 turn_question = f"{snippet_text}\n\n{received}"
             interrupted = stream_with_barge_in(llm, tts, turn_question, logger=_L)

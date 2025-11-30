@@ -27,6 +27,10 @@
         "backend": "huggingface",
         "hf_base_url": "https://mwtuni-avatar-mcp.hf.space",
         "local_base_url": "http://localhost:7865",
+        "system_prompt": [
+            "You are a respectful digital persona. Stay concise and conversational.",
+            "Use background details only when they directly help answer the user's request; do not list your profile unless asked."
+        ],
         "avatar_id": "08a2fb96",
         "admin_id": "01043e7a9c7141f892d0b08e6c325f18"
     }
