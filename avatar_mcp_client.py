@@ -53,6 +53,27 @@ class AvatarMCPClient:
             self._log(f"[avatar_mcp] loaded context ({mode})")
         return data
 
+    def summarize(self, max_mem: int = 3) -> Optional[str]:
+        if not self.avatar_id:
+            return None
+        payload = {"avatar_id": self.avatar_id, "max_mem": max_mem}
+        data = self._request("/mcp/summarize_avatar", payload)
+        if data and isinstance(data, dict):
+            summary = data.get("summary")
+            if summary:
+                self._log("[avatar_mcp] summary ready")
+                return summary
+        return None
+
+    def retrieve_snippets(self, query: str, limit: int = 3) -> Optional[list[str]]:
+        if not self.avatar_id:
+            return None
+        payload = {"avatar_id": self.avatar_id, "query": query, "limit": limit}
+        data = self._request("/mcp/retrieve_snippets", payload)
+        if data and isinstance(data, dict):
+            return data.get("snippets") or []
+        return None
+
     def store_memory(self, entry: str, private: bool = True):
         if not self.avatar_id or not self.admin_id:
             return None

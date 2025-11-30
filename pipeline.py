@@ -230,17 +230,17 @@ def main():
             logger=lambda msg: logger.info(msg, module="avatar"),
             config=avatar_cfg if isinstance(avatar_cfg, dict) else {},
         )
-        avatar_prompt = None
+        avatar_summary = None
         if avatar_client.avatar_id:
-            ctx = avatar_client.fetch_context(private=True)
-            avatar_prompt = AvatarMCPClient.build_prompt(ctx)
-            if ctx is None:
+            avatar_summary = avatar_client.summarize(max_mem=3)
+            if not avatar_summary:
+                ctx = avatar_client.fetch_context(private=True)
+                avatar_summary = AvatarMCPClient.build_prompt(ctx)
+            if avatar_summary:
+                logger.info("Using avatar summary/persona prompt.", module="avatar")
+            else:
                 logger.warn("⚠️ Failed to load avatar context", module="avatar")
-        if avatar_prompt:
-            combined_prompt = avatar_prompt
-            logger.info("Using avatar persona prompt for Chatty.", module="avatar")
-        else:
-            combined_prompt = system_prompt or ""
+        combined_prompt = avatar_summary or system_prompt or ""
 
         # instantiate adapter with opts and explicit system_prompt (adapters accept and prefer it)
         llm = LLMBackend(system_prompt=combined_prompt, **backend_opts)
@@ -281,6 +281,13 @@ def main():
             logger.info(f"🤖 Question: '{received}'", module="main")
             if avatar_client.avatar_id and "remember" in received.lower():
                 avatar_client.store_memory(received, private=True)
+            # Lightweight context refresh per turn: pull top snippets for this utterance
+            snippets = None
+            if avatar_client.avatar_id:
+                try:
+                    snippets = avatar_client.retrieve_snippets(received, limit=3)
+                except Exception:
+                    snippets = None
 
             # reset per-turn metrics to avoid stale values
             try:
@@ -299,7 +306,12 @@ def main():
             except Exception:
                 pass
 
-            interrupted = stream_with_barge_in(llm, tts, received, logger=_L)
+            # Build per-turn prompt with snippets appended (if any)
+            turn_question = received
+            if snippets:
+                snippet_text = "Relevant notes: " + " | ".join(snippets)
+                turn_question = f"{snippet_text}\n\n{received}"
+            interrupted = stream_with_barge_in(llm, tts, turn_question, logger=_L)
 
             # notify STT we’re done (or interrupted)
             try:
