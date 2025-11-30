@@ -37,7 +37,7 @@ def _L(event, detail=""):
 
 
 class OptimizedKokoroTTS:
-    def __init__(self):
+    def __init__(self, voice: str = "af_bella", default_speed: float = 1.0):
         self.word_buffer = []
         self.synthesis_active = False
         self.text_queue, self.audio_queue = Queue(), Queue()
@@ -46,8 +46,8 @@ class OptimizedKokoroTTS:
 
         from RealtimeTTS import TextToAudioStream, KokoroEngine
         self.engine = KokoroEngine(
-            voice="af_bella",
-            default_speed=1.0,
+            voice=voice,
+            default_speed=default_speed,
             trim_silence=True,
             silence_threshold=0.005,
             extra_start_ms=5, extra_end_ms=5,
@@ -248,11 +248,24 @@ def main():
                 avatar_cfg_prompt = "\n".join([str(x) for x in avatar_cfg_prompt if x is not None])
         except Exception:
             avatar_cfg_prompt = None
-        base_system_prompt = system_prompt or ""
+        # Single-mode selection for lifetime: prefer MCP avatar prompt, then avatar config prompt, else assistant prompt
+        if avatar_prompt:
+            base_system_prompt = avatar_prompt
+            logger.info("Using avatar MCP prompt for session system prompt.", module="main")
+        elif avatar_cfg_prompt:
+            base_system_prompt = avatar_cfg_prompt
+            logger.info("Using avatar config prompt for session system prompt.", module="main")
+        else:
+            base_system_prompt = system_prompt or ""
+            logger.info("Using assistant prompt for session system prompt.", module="main")
 
         # instantiate adapter with opts and explicit system_prompt (adapters accept and prefer it)
         llm = LLMBackend(system_prompt=base_system_prompt, **backend_opts)
-        tts = OptimizedKokoroTTS(); tts.start()
+
+        tts_cfg = cfg.get("tts", {}) if "cfg" in globals() else {}
+        voice = tts_cfg.get("voice", "af_bella") if isinstance(tts_cfg, dict) else "af_bella"
+        speed = tts_cfg.get("speed", 1.0) if isinstance(tts_cfg, dict) else 1.0
+        tts = OptimizedKokoroTTS(voice=voice, default_speed=float(speed)); tts.start()
 
         from stt_process import KokoroSTT
         realtime_stt = KokoroSTT()
@@ -347,10 +360,6 @@ def main():
             if persona_query and snippets:
                 snippet_text = "Relevant notes: " + " | ".join(snippets)
                 turn_question = f"{snippet_text}\n\n{received}"
-            if persona_query:
-                persona_prefix = avatar_prompt or avatar_cfg_prompt
-                if persona_prefix:
-                    turn_question = f"{persona_prefix}\n\n{turn_question}"
             interrupted = stream_with_barge_in(llm, tts, turn_question, logger=_L)
 
             # notify STT we’re done (or interrupted)
