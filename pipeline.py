@@ -240,7 +240,7 @@ def main():
                 logger.info("Avatar persona prompt loaded.", module="avatar")
             else:
                 logger.warn("⚠️ Failed to load avatar context", module="avatar")
-        # Resolve system prompt preference: avatar prompt (if loaded) > avatar config prompt > llm config prompt
+        # Resolve prompts from config (avatar prompt stays separate and is only used per-turn on persona queries)
         avatar_cfg_prompt = None
         try:
             avatar_cfg_prompt = avatar_cfg.get("system_prompt")
@@ -248,10 +248,10 @@ def main():
                 avatar_cfg_prompt = "\n".join([str(x) for x in avatar_cfg_prompt if x is not None])
         except Exception:
             avatar_cfg_prompt = None
-        llm_system_prompt = avatar_prompt or avatar_cfg_prompt or system_prompt or ""
+        base_system_prompt = system_prompt or ""
 
         # instantiate adapter with opts and explicit system_prompt (adapters accept and prefer it)
-        llm = LLMBackend(system_prompt=llm_system_prompt, **backend_opts)
+        llm = LLMBackend(system_prompt=base_system_prompt, **backend_opts)
         tts = OptimizedKokoroTTS(); tts.start()
 
         from stt_process import KokoroSTT
@@ -262,19 +262,27 @@ def main():
             if not text:
                 return False
             lowered = text.lower()
-            triggers = (
-                "you",
-                "your",
-                "mika",
+            phrase_triggers = (
+                "who are you",
+                "what are you",
+                "tell me about yourself",
+                "about you",
+                "about yourself",
+            )
+            token_triggers = (
                 "avatar",
                 "profile",
                 "bio",
                 "background",
+                "persona",
+                "mika",
                 "project",
                 "portfolio",
                 "remember",
             )
-            return any(tok in lowered for tok in triggers)
+            return any(p in lowered for p in phrase_triggers) or any(
+                f" {t} " in f" {lowered} " for t in token_triggers
+            )
 
         def _ready(stt_obj, timeout=12.0):
             try:
@@ -339,6 +347,10 @@ def main():
             if persona_query and snippets:
                 snippet_text = "Relevant notes: " + " | ".join(snippets)
                 turn_question = f"{snippet_text}\n\n{received}"
+            if persona_query:
+                persona_prefix = avatar_prompt or avatar_cfg_prompt
+                if persona_prefix:
+                    turn_question = f"{persona_prefix}\n\n{turn_question}"
             interrupted = stream_with_barge_in(llm, tts, turn_question, logger=_L)
 
             # notify STT we’re done (or interrupted)
