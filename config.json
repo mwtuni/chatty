@@ -25,7 +25,7 @@
     },
     "avatar": {
         "backend": "huggingface",
-        "hf_base_url": "https://mwtuni-avatar-mcp.hf.space",
+        "hf_base_url": "https://huggingface.co/spaces/MCP-1st-Birthday/avatar-mcp",
         "local_base_url": "http://localhost:7865",
         "system_prompt": [
             "You are a respectful digital persona. Stay concise and conversational.",
